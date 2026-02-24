@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Manager</title>
+<meta name="description" content="車両管理アプリ — 燃費・給油・メンテナンス・車検・走行距離を一元管理">
+<meta name="theme-color" content="#e8b84b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Car Manager">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #e8b84b;
+    --danger: #e84b4b;
+    --success: #4be87a;
+    --text: #e8eaf0;
+    --muted: #6b7490;
+    --radius: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 4px; color: var(--accent); }
+  .header-car { margin-left: auto; font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+
+  .sidebar { width: 230px; min-width: 230px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .car-area { padding: 16px; border-bottom: 1px solid var(--border); }
+  .car-area select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 6px; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; outline: none; cursor: pointer; margin-bottom: 8px; }
+  .btn-add-car { width: 100%; padding: 8px; background: rgba(232,184,75,0.12); border: 1px dashed rgba(232,184,75,0.5); color: var(--accent); border-radius: 6px; cursor: pointer; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; transition: all .15s; }
+  .btn-add-car:hover { background: rgba(232,184,75,0.22); }
+
+  .nav { padding: 12px 8px; flex: 1; }
+  .nav-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); padding: 8px 10px 4px; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; border: none; background: none; width: 100%; text-align: left; font-family: 'Noto Sans JP', sans-serif; transition: all .15s; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(232,184,75,0.12); color: var(--accent); }
+
+  main { flex: 1; padding: 28px; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--accent); margin-bottom: 20px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
+  .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; padding: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  input, select, textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 10px; border-radius: 6px; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; outline: none; transition: border-color .15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+  .form-actions { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+
+  .btn { padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 500; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #111; }
+  .btn-primary:hover { background: #f5cc6e; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; padding: 3px 8px; border-radius: 4px; font-size: 13px; }
+  .btn-del:hover { background: rgba(232,75,75,0.12); }
+  .btn-edit { background: none; border: none; color: var(--muted); cursor: pointer; padding: 3px 8px; border-radius: 4px; font-size: 13px; }
+  .btn-edit:hover { color: var(--accent); background: rgba(232,184,75,0.1); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 9px 14px; text-align: left; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface2); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(37,42,58,0.6); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(28,32,48,0.6); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; border-left: 3px solid var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; margin-top: 6px; }
+  .stat-unit { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .badge-ok { background: rgba(75,232,122,0.15); color: var(--success); }
+  .badge-warn { background: rgba(232,184,75,0.15); color: var(--accent); }
+  .badge-danger { background: rgba(232,75,75,0.15); color: var(--danger); }
+
+  .alert { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 8px; border: 1px solid; margin-bottom: 10px; font-size: 13px; }
+  .alert-warn { background: rgba(232,184,75,0.08); border-color: rgba(232,184,75,0.3); color: var(--accent); }
+  .alert-danger { background: rgba(232,75,75,0.08); border-color: rgba(232,75,75,0.3); color: var(--danger); }
+
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; gap: 16px; }
+  .welcome-icon { font-size: 56px; }
+  .welcome h2 { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--accent); }
+  .welcome p { color: var(--muted); line-height: 1.7; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 480px; animation: modalIn .2s ease; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  .modal-header { padding: 16px 18px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+
+  .empty-state { text-align: center; padding: 36px; color: var(--muted); font-size: 13px; }
+
+  .progress-wrap { background: var(--surface2); border-radius: 4px; height: 6px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+
+  /* ── Mobile Top Bar ── */
+  .mobile-topbar {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    gap: 8px;
+    flex-direction: column;
+    position: sticky;
+    top: 56px;
+    z-index: 90;
+  }
+  .mobile-car-row { display: flex; gap: 8px; align-items: center; }
+  .mobile-car-row select { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; outline: none; }
+  .mobile-car-row .btn-add-car { white-space: nowrap; padding: 7px 12px; width: auto; flex-shrink: 0; }
+  .mobile-nav-scroll { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+  .mobile-nav-scroll::-webkit-scrollbar { display: none; }
+  .mobile-nav-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; cursor: pointer; white-space: nowrap; transition: all .15s; }
+  .mobile-nav-btn.active { background: rgba(232,184,75,0.15); border-color: rgba(232,184,75,0.5); color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header { top: 0; }
+    .sidebar { display: none; }
+    .mobile-topbar { display: flex; }
+    main { padding: 16px 12px; }
+    .form-grid { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal { max-width: 100%; border-radius: 12px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    /* テーブルをカード形式に変換 */
+    .table-wrap { display: none; }
+    .card-list { display: flex; flex-direction: column; gap: 0; }
+    .record-card {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .record-card:last-child { border-bottom: none; }
+    .record-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .record-card-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .record-card-actions { display: flex; gap: 2px; flex-shrink: 0; }
+    .record-card-main {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .record-card-sub {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .record-card-sub span { white-space: nowrap; }
+  }
+  @media (min-width: 641px) {
+    .card-list { display: none; }
+    .table-wrap { display: block; }
+  }
+  @media (max-width: 400px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🚗 AutoLog</div>
+  <div class="header-car" id="headerCarName">車両未選択</div>
+</header>
+
+<!-- Mobile Top Navigation -->
+<div class="mobile-topbar" id="mobileTopbar">
+  <div class="mobile-car-row">
+    <select id="carSelectMobile" onchange="onCarChangeMobile()">
+      <option value="">-- 車両を選択 --</option>
+    </select>
+    <button class="btn-add-car" onclick="showModal('modalAddCar')">＋ 追加</button>
+  </div>
+  <div class="mobile-nav-scroll">
+    <button class="mobile-nav-btn active" onclick="goPageMobile('dashboard', this)">📊 ダッシュボード</button>
+    <button class="mobile-nav-btn" onclick="goPageMobile('fuel', this)">⛽ 燃費・給油</button>
+    <button class="mobile-nav-btn" onclick="goPageMobile('maint', this)">🔧 メンテナンス</button>
+    <button class="mobile-nav-btn" onclick="goPageMobile('inspect', this)">📋 車検・保険</button>
+    <button class="mobile-nav-btn" onclick="goPageMobile('mileage', this)">🛣️ 走行距離</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="car-area">
+      <select id="carSelect" onchange="onCarChange()">
+        <option value="">-- 車両を選択 --</option>
+      </select>
+      <button class="btn-add-car" onclick="showModal('modalAddCar')">＋ 車両を追加</button>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">メニュー</div>
+      <button class="nav-item active" onclick="goPage('dashboard', this)">📊 ダッシュボード</button>
+      <button class="nav-item" onclick="goPage('fuel', this)">⛽ 燃費・給油</button>
+      <button class="nav-item" onclick="goPage('maint', this)">🔧 メンテナンス</button>
+      <button class="nav-item" onclick="goPage('inspect', this)">📋 車検・保険</button>
+      <button class="nav-item" onclick="goPage('mileage', this)">🛣️ 走行距離</button>
+    </nav>
+  </div>
+
+  <main>
+    <div class="page active" id="page-dashboard"><div id="dashContent"></div></div>
+
+    <div class="page" id="page-fuel">
+      <div class="page-title">⛽ 燃費・給油記録</div>
+      <div class="card">
+        <div class="card-header">給油を追加</div>
+        <div class="form-grid">
+          <div class="form-group"><label>日付</label><input type="date" id="fDate"></div>
+          <div class="form-group"><label>走行距離 (km)</label><input type="number" id="fOdo" placeholder="例: 12500"></div>
+          <div class="form-group"><label>給油量 (L)</label><input type="number" id="fAmt" step="0.1" placeholder="例: 40.5"></div>
+          <div class="form-group"><label>単価 (円/L)</label><input type="number" id="fPrice" placeholder="例: 168"></div>
+          <div class="form-group"><label>スタンド名</label>
+            <select id="fStationSelect" onchange="onStationSelect('fStationSelect','fStation')">
+              <option value="">-- 選択または入力 --</option>
+            </select>
+            <input type="text" id="fStation" placeholder="スタンド名を入力" style="margin-top:6px;">
+          </div>
+          <div class="form-group"><label>メモ</label><input type="text" id="fNote"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="addFuel()">追加する</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header">給油履歴</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>日付</th><th>走行距離</th><th>給油量</th><th>単価</th><th>合計</th><th>燃費</th><th>スタンド</th><th></th><th></th></tr></thead>
+          <tbody id="fuelBody"></tbody></table>
+        </div>
+        <div class="card-list" id="fuelCards"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-maint">
+      <div class="page-title">🔧 メンテナンス記録</div>
+      <div class="card">
+        <div class="card-header">メンテナンスを追加</div>
+        <div class="form-grid">
+          <div class="form-group"><label>日付</label><input type="date" id="mDate"></div>
+          <div class="form-group"><label>走行距離 (km)</label><input type="number" id="mOdo" placeholder="例: 12500"></div>
+          <div class="form-group"><label>種類</label>
+            <select id="mType"><option>オイル交換</option><option>タイヤ交換</option><option>ブレーキ交換</option><option>バッテリー交換</option><option>エアフィルター</option><option>ワイパー交換</option><option>定期点検</option><option>その他</option></select>
+          </div>
+          <div class="form-group"><label>費用 (円)</label><input type="number" id="mCost" placeholder="例: 8000"></div>
+          <div class="form-group"><label>次回予定日</label><input type="date" id="mNextDate"></div>
+          <div class="form-group"><label>次回予定距離 (km)</label><input type="number" id="mNextOdo" placeholder="例: 17500"></div>
+          <div class="form-group full"><label>メモ</label><textarea id="mNote" placeholder="作業内容など"></textarea></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="addMaint()">追加する</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header">メンテナンス履歴</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>日付</th><th>種類</th><th>走行距離</th><th>費用</th><th>次回予定</th><th>メモ</th><th></th><th></th></tr></thead>
+          <tbody id="maintBody"></tbody></table>
+        </div>
+        <div class="card-list" id="maintCards"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-inspect">
+      <div class="page-title">📋 車検・保険管理</div>
+      <div class="card">
+        <div class="card-header">車検情報</div>
+        <div class="form-grid">
+          <div class="form-group"><label>前回車検日</label><input type="date" id="iLast"></div>
+          <div class="form-group"><label>次回車検日</label><input type="date" id="iNext"></div>
+          <div class="form-group"><label>費用 (円)</label><input type="number" id="iCost" placeholder="例: 80000"></div>
+          <div class="form-group"><label>業者名</label><input type="text" id="iShop" placeholder="例: ディーラー"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="saveInspect()">保存</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header">自動車保険</div>
+        <div class="form-grid">
+          <div class="form-group"><label>保険会社</label><input type="text" id="insComp" placeholder="例: 東京海上"></div>
+          <div class="form-group"><label>証券番号</label><input type="text" id="insPol" placeholder="例: TK-123456"></div>
+          <div class="form-group"><label>保険開始日</label><input type="date" id="insStart"></div>
+          <div class="form-group"><label>保険終了日</label><input type="date" id="insEnd"></div>
+          <div class="form-group"><label>年間保険料 (円)</label><input type="number" id="insPrem" placeholder="例: 60000"></div>
+          <div class="form-group"><label>等級</label><input type="number" id="insGrade" placeholder="例: 15"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="saveInsurance()">保存</button></div>
+      </div>
+      <div id="inspectStatus"></div>
+    </div>
+
+    <div class="page" id="page-mileage">
+      <div class="page-title">🛣️ 走行距離トラッキング</div>
+      <div class="card">
+        <div class="card-header">走行記録を追加</div>
+        <div class="form-grid">
+          <div class="form-group"><label>日付</label><input type="date" id="dDate"></div>
+          <div class="form-group"><label>走行距離 (km)</label><input type="number" id="dKm" step="0.1" placeholder="例: 120.5"></div>
+          <div class="form-group"><label>目的</label>
+            <select id="dPurpose"><option>通勤</option><option>買い物</option><option>旅行</option><option>業務</option><option>その他</option></select>
+          </div>
+          <div class="form-group"><label>メモ</label><input type="text" id="dNote" placeholder="例: 東京→大阪"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="addMileage()">追加する</button></div>
+      </div>
+      <div id="mileageStats"></div>
+      <div class="card">
+        <div class="card-header">走行履歴</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>日付</th><th>距離</th><th>目的</th><th>メモ</th><th></th><th></th></tr></thead>
+          <tbody id="mileageBody"></tbody></table>
+        </div>
+        <div class="card-list" id="mileageCards"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalAddCar" style="display:none" onclick="if(event.target===this)hideModal('modalAddCar')">
+  <div class="modal">
+    <div class="modal-header">
+      🚗 車両を追加
+      <button class="modal-close" onclick="hideModal('modalAddCar')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>ニックネーム *</label><input type="text" id="cNick" placeholder="例: 通勤車"></div>
+      <div class="form-group">
+        <label>メーカー *</label>
+        <select id="cMakeSelect" onchange="onMakeSelect()"></select>
+        <input type="text" id="cMakeCustom" placeholder="メーカー名を入力してください" style="display:none;margin-top:6px;">
+      </div>
+      <div class="form-group"><label>車種 *</label><input type="text" id="cModel" placeholder="例: プリウス"></div>
+      <div class="form-group"><label>年式</label><input type="number" id="cYear" placeholder="例: 2020"></div>
+      <div class="form-group"><label>ナンバー</label><input type="text" id="cPlate" placeholder="例: 品川 300 あ 1234"></div>
+      <div class="form-group"><label>現在の走行距離 (km)</label><input type="number" id="cOdo" placeholder="例: 10000"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="addCar()">登録する</button>
+      <button class="btn btn-ghost" onclick="hideModal('modalAddCar')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modalEdit" style="display:none" onclick="if(event.target===this)hideModal('modalEdit')">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="editModalTitle">記録を編集</span>
+      <button class="modal-close" onclick="hideModal('modalEdit')">×</button>
+    </div>
+    <div id="editModalFields"></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="saveEdit()">保存する</button>
+      <button class="btn btn-ghost" onclick="hideModal('modalEdit')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── LocalStorage 永続化ストア ──
+const STORE_KEY = 'autolog_v1';
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { cars: [], fuel: {}, maint: {}, inspect: {}, mileage: {}, customMakers: [], stations: [], uid: 1 };
+}
+function saveStore() {
+  try {
+    state.uid = _uid;
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+const state = loadStore();
+const db = state; // alias
+let _uid = state.uid || 1; // restore uid from saved state
+
+let currentCarId = state.lastCarId ? parseInt(state.lastCarId) : null;
+
+const newId = () => { const id = _uid++; saveStore(); return id; };
+const today = () => new Date().toISOString().slice(0,10);
+
+const getList = (type) => currentCarId ? (db[type][currentCarId] || []) : [];
+const pushItem = (type, item) => {
+  if (!currentCarId) return;
+  if (!db[type][currentCarId]) db[type][currentCarId] = [];
+  db[type][currentCarId].unshift(item);
+  saveStore();
+};
+const removeItem = (type, id) => {
+  if (!currentCarId) return;
+  db[type][currentCarId] = (db[type][currentCarId] || []).filter(r => r.id !== id);
+  saveStore();
+};
+const getInfo = () => db.inspect[currentCarId] || {};
+const setInfo = (info) => { db.inspect[currentCarId] = info; saveStore(); };
+
+// ── メーカーリスト ──
+const DEFAULT_MAKERS = ['トヨタ','ホンダ','日産','マツダ','スバル','三菱','スズキ','ダイハツ','いすゞ','レクサス'];
+// stateから読み込む（永続化）
+if (!state.customMakers) state.customMakers = [];
+if (!state.stations) state.stations = [];
+let customMakers = state.customMakers;
+
+function buildMakerSelect() {
+  const sel = document.getElementById('cMakeSelect');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.textContent = '-- メーカーを選択 --';
+  sel.appendChild(blank);
+  [...DEFAULT_MAKERS, ...customMakers].forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    sel.appendChild(o);
+  });
+  const other = document.createElement('option');
+  other.value = '__other__'; other.textContent = 'その他（手入力）';
+  sel.appendChild(other);
+  if (prev) sel.value = prev;
+}
+
+// ── スタンド名記憶 ──
+const stationMemory = (state.stations && state.stations.length) ? [...state.stations] : [];
+
+function buildStationSelects() {
+  // すべてのスタンド選択セレクトを更新
+  ['fStationSelect'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- 選択または入力 --</option>';
+    stationMemory.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = s;
+      sel.appendChild(o);
+    });
+    const other = document.createElement('option');
+    other.value = '__new__'; other.textContent = '＋ 新しいスタンドを入力';
+    sel.appendChild(other);
+    if (prev) sel.value = prev;
+  });
+}
+
+// セレクト変更時：既存選択→テキスト欄に反映、新規→テキスト欄を空にしてフォーカス
+function onStationSelect(selId, inputId) {
+  const val = document.getElementById(selId).value;
+  const inp = document.getElementById(inputId);
+  if (val === '__new__' || val === '') {
+    inp.value = '';
+    inp.focus();
+  } else {
+    inp.value = val;
+  }
+}
+
+function rememberStation(name) {
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  const idx = stationMemory.indexOf(n);
+  if (idx !== -1) stationMemory.splice(idx, 1);
+  stationMemory.unshift(n);
+  if (stationMemory.length > 50) stationMemory.pop();
+  try { state.stations = [...stationMemory]; saveStore(); } catch(e) {}
+  buildStationSelects();
+}
+
+// 編集モーダル用：スタンドセレクトをHTMLとして生成
+function stationSelectHtml(currentVal) {
+  const opts = stationMemory.map(s =>
+    `<option value="${s}"${s===currentVal?' selected':''}>${s}</option>`
+  ).join('');
+  return `
+    <select id="eStationSelect" onchange="onStationSelect('eStationSelect','eStation')">
+      <option value="">-- 選択または入力 --</option>
+      ${opts}
+      <option value="__new__">＋ 新しいスタンドを入力</option>
+    </select>
+    <input type="text" id="eStation" value="${currentVal ?? ''}" placeholder="スタンド名を入力" style="margin-top:6px;">`;
+}
+
+function onMakeSelect() {
+  const sel = document.getElementById('cMakeSelect');
+  const custom = document.getElementById('cMakeCustom');
+  if (sel.value === '__other__') {
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+
+// ── Modal ──
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ── Navigation ──
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  renderPage(name);
+}
+function renderPage(name) {
+  const map = { dashboard: renderDashboard, fuel: renderFuel, maint: renderMaint, inspect: renderInspect, mileage: renderMileage };
+  if (map[name]) map[name]();
+}
+
+// ── Mobile Nav ──
+function goPageMobile(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  renderPage(name);
+}
+function onCarChangeMobile() {
+  const sel = document.getElementById('carSelectMobile');
+  document.getElementById('carSelect').value = sel.value;
+  onCarChange();
+}
+
+// ── Cars ──
+function addCar() {
+  const nick  = document.getElementById('cNick').value.trim();
+  const selVal = document.getElementById('cMakeSelect').value;
+  let make = '';
+  if (selVal === '__other__') {
+    make = document.getElementById('cMakeCustom').value.trim();
+    if (make && !DEFAULT_MAKERS.includes(make) && !customMakers.includes(make)) {
+      customMakers.push(make);
+      buildMakerSelect();
+    }
+  } else {
+    make = selVal;
+  }
+  const model = document.getElementById('cModel').value.trim();
+  const year  = document.getElementById('cYear').value;
+  const plate = document.getElementById('cPlate').value.trim();
+  const odo   = parseFloat(document.getElementById('cOdo').value) || 0;
+
+  if (!nick)  return alert('ニックネームを入力してください');
+  if (!make)  return alert('メーカーを選択または入力してください');
+  if (!model) return alert('車種を入力してください');
+
+  const id = newId();
+  db.cars.push({ id, nick, make, model, year, plate, odo });
+  db.fuel[id] = []; db.maint[id] = []; db.mileage[id] = [];
+  saveStore();
+
+  ['cNick','cModel','cYear','cPlate','cOdo','cMakeCustom'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('cMakeSelect').value = '';
+  document.getElementById('cMakeCustom').style.display = 'none';
+
+  const opt = document.createElement('option');
+  opt.value = id;
+  opt.textContent = `${nick}（${make} ${model}${year ? ' ' + year : ''}）`;
+  document.getElementById('carSelect').appendChild(opt.cloneNode(true));
+  document.getElementById('carSelectMobile').appendChild(opt);
+  document.getElementById('carSelect').value = id;
+  document.getElementById('carSelectMobile').value = id;
+  hideModal('modalAddCar');
+  onCarChange();
+}
+
+function onCarChange() {
+  const sel = document.getElementById('carSelect');
+  currentCarId = sel.value ? parseInt(sel.value) : null;
+  state.lastCarId = currentCarId;
+  saveStore();
+  const car = db.cars.find(c => c.id === currentCarId);
+  document.getElementById('headerCarName').textContent = car
+    ? `${car.nick} — ${car.make} ${car.model}${car.plate ? '　' + car.plate : ''}`
+    : '車両未選択';
+  const active = document.querySelector('.page.active')?.id?.replace('page-', '');
+  if (active) renderPage(active);
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  const el = document.getElementById('dashContent');
+  if (!currentCarId) {
+    el.innerHTML = `<div class="welcome">
+      <div class="welcome-icon">🚗</div>
+      <h2>AutoLog へようこそ</h2>
+      <p>左のサイドバーから「＋ 車両を追加」をクリックして<br>最初の車両を登録してください。</p>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="showModal('modalAddCar')">車両を追加する</button>
+    </div>`;
+    return;
+  }
+  const car = db.cars.find(c => c.id === currentCarId);
+  const fuel = getList('fuel');
+  const maint = getList('maint');
+  const mileage = getList('mileage');
+  const info = getInfo();
+
+  let avgFE = null;
+  if (fuel.length >= 2) {
+    const sorted = [...fuel].sort((a,b) => a.odo - b.odo);
+    let sum = 0, cnt = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      const km = sorted[i].odo - sorted[i-1].odo;
+      if (km > 0 && sorted[i].amt > 0) { sum += km / sorted[i].amt; cnt++; }
+    }
+    if (cnt) avgFE = sum / cnt;
+  }
+
+  const totalFuelCost = fuel.reduce((s,r) => s + (r.price && r.amt ? r.price * r.amt : 0), 0);
+  const totalMaintCost = maint.reduce((s,r) => s + (r.cost || 0), 0);
+  const totalKm = mileage.reduce((s,r) => s + r.km, 0);
+
+  let alerts = '';
+  if (info.iNext) {
+    const d = Math.round((new Date(info.iNext) - new Date()) / 86400000);
+    if (d < 90) alerts += `<div class="alert ${d < 30 ? 'alert-danger' : 'alert-warn'}">⚠️ 車検まであと <b>${d}日</b>（${info.iNext}）</div>`;
+  }
+  if (info.insEnd) {
+    const d = Math.round((new Date(info.insEnd) - new Date()) / 86400000);
+    if (d < 90) alerts += `<div class="alert ${d < 30 ? 'alert-danger' : 'alert-warn'}">🛡️ 保険更新まであと <b>${d}日</b>（${info.insEnd}）</div>`;
+  }
+
+  const activities = [
+    ...fuel.slice(0,3).map(r => ({ date: r.date, text: `⛽ 給油 ${r.amt}L${r.station ? '（' + r.station + '）' : ''}` })),
+    ...maint.slice(0,3).map(r => ({ date: r.date, text: `🔧 ${r.type}` })),
+    ...mileage.slice(0,3).map(r => ({ date: r.date, text: `🛣️ ${r.km}km走行（${r.purpose}）` })),
+  ].sort((a,b) => b.date.localeCompare(a.date)).slice(0,6);
+
+  el.innerHTML = `
+    <div class="page-title">📊 ${car.nick} — ダッシュボード</div>
+    ${alerts}
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">平均燃費</div><div class="stat-value">${avgFE != null ? avgFE.toFixed(1) : '—'}</div><div class="stat-unit">km/L</div></div>
+      <div class="stat-card"><div class="stat-label">給油コスト累計</div><div class="stat-value">${Math.round(totalFuelCost/1000)}k</div><div class="stat-unit">円</div></div>
+      <div class="stat-card"><div class="stat-label">整備コスト累計</div><div class="stat-value">${Math.round(totalMaintCost/1000)}k</div><div class="stat-unit">円</div></div>
+      <div class="stat-card"><div class="stat-label">走行距離合計</div><div class="stat-value">${totalKm.toFixed(0)}</div><div class="stat-unit">km</div></div>
+      <div class="stat-card"><div class="stat-label">給油回数</div><div class="stat-value">${fuel.length}</div><div class="stat-unit">回</div></div>
+      <div class="stat-card"><div class="stat-label">整備記録</div><div class="stat-value">${maint.length}</div><div class="stat-unit">件</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">最近の活動</div>
+      ${activities.length
+        ? activities.map(a => `<div style="display:flex;gap:14px;padding:10px 14px;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-family:JetBrains Mono,monospace;font-size:12px;min-width:90px;">${a.date}</span><span>${a.text}</span></div>`).join('')
+        : '<div class="empty-state">まだ記録がありません</div>'}
+    </div>`;
+}
+
+// ── 編集モーダル共通 ──
+let editTarget = null; // { type, id }
+
+function openEditModal(type, id) {
+  const list = getList(type);
+  const item = list.find(r => r.id === id);
+  if (!item) return;
+  editTarget = { type, id };
+
+  const title = { fuel: '⛽ 給油記録を編集', maint: '🔧 メンテナンス記録を編集', mileage: '🛣️ 走行記録を編集' }[type];
+  let fields = '';
+
+  if (type === 'fuel') {
+    fields = `
+      <div class="form-group"><label>日付</label><input type="date" id="eDate" value="${item.date}"></div>
+      <div class="form-group"><label>走行距離 (km)</label><input type="number" id="eOdo" value="${item.odo}"></div>
+      <div class="form-group"><label>給油量 (L)</label><input type="number" id="eAmt" step="0.1" value="${item.amt}"></div>
+      <div class="form-group"><label>単価 (円/L)</label><input type="number" id="ePrice" value="${item.price ?? ''}"></div>
+      <div class="form-group"><label>スタンド名</label>${stationSelectHtml(item.station)}</div>
+      <div class="form-group"><label>メモ</label><input type="text" id="eNote" value="${item.note ?? ''}"></div>`;
+  } else if (type === 'maint') {
+    const typeOptions = ['オイル交換','タイヤ交換','ブレーキ交換','バッテリー交換','エアフィルター','ワイパー交換','定期点検','その他']
+      .map(t => `<option${t===item.type?' selected':''}>${t}</option>`).join('');
+    fields = `
+      <div class="form-group"><label>日付</label><input type="date" id="eDate" value="${item.date}"></div>
+      <div class="form-group"><label>走行距離 (km)</label><input type="number" id="eOdo" value="${item.odo ?? ''}"></div>
+      <div class="form-group"><label>種類</label><select id="eType">${typeOptions}</select></div>
+      <div class="form-group"><label>費用 (円)</label><input type="number" id="eCost" value="${item.cost ?? ''}"></div>
+      <div class="form-group"><label>次回予定日</label><input type="date" id="eNextDate" value="${item.nextDate ?? ''}"></div>
+      <div class="form-group"><label>次回予定距離 (km)</label><input type="number" id="eNextOdo" value="${item.nextOdo ?? ''}"></div>
+      <div class="form-group full"><label>メモ</label><textarea id="eNote">${item.note ?? ''}</textarea></div>`;
+  } else if (type === 'mileage') {
+    const purposeOptions = ['通勤','買い物','旅行','業務','その他']
+      .map(p => `<option${p===item.purpose?' selected':''}>${p}</option>`).join('');
+    fields = `
+      <div class="form-group"><label>日付</label><input type="date" id="eDate" value="${item.date}"></div>
+      <div class="form-group"><label>走行距離 (km)</label><input type="number" id="eKm" step="0.1" value="${item.km}"></div>
+      <div class="form-group"><label>目的</label><select id="ePurpose">${purposeOptions}</select></div>
+      <div class="form-group"><label>メモ</label><input type="text" id="eNote" value="${item.note ?? ''}"></div>`;
+  }
+
+  document.getElementById('editModalTitle').textContent = title;
+  document.getElementById('editModalFields').innerHTML = `<div class="form-grid">${fields}</div>`;
+  showModal('modalEdit');
+}
+
+function saveEdit() {
+  if (!editTarget) return;
+  const { type, id } = editTarget;
+  const list = getList(type);
+  const idx = list.findIndex(r => r.id === id);
+  if (idx === -1) return;
+
+  const item = list[idx];
+  if (type === 'fuel') {
+    const date = document.getElementById('eDate').value;
+    const odo  = parseFloat(document.getElementById('eOdo').value);
+    const amt  = parseFloat(document.getElementById('eAmt').value);
+    if (!date || isNaN(odo) || isNaN(amt)) return alert('日付・走行距離・給油量は必須です');
+    list[idx] = { ...item, date, odo, amt,
+      price: parseFloat(document.getElementById('ePrice').value) || null,
+      station: document.getElementById('eStation').value.trim(),
+      note: document.getElementById('eNote').value.trim() };
+    rememberStation(list[idx].station);
+  } else if (type === 'maint') {
+    const date = document.getElementById('eDate').value;
+    if (!date) return alert('日付は必須です');
+    list[idx] = { ...item, date,
+      odo: parseFloat(document.getElementById('eOdo').value) || null,
+      type: document.getElementById('eType').value,
+      cost: parseFloat(document.getElementById('eCost').value) || null,
+      nextDate: document.getElementById('eNextDate').value,
+      nextOdo: document.getElementById('eNextOdo').value,
+      note: document.getElementById('eNote').value.trim() };
+  } else if (type === 'mileage') {
+    const date = document.getElementById('eDate').value;
+    const km   = parseFloat(document.getElementById('eKm').value);
+    if (!date || isNaN(km)) return alert('日付・走行距離は必須です');
+    list[idx] = { ...item, date, km,
+      purpose: document.getElementById('ePurpose').value,
+      note: document.getElementById('eNote').value.trim() };
+  }
+
+  hideModal('modalEdit');
+  editTarget = null;
+  renderPage(type === 'mileage' ? 'mileage' : type === 'maint' ? 'maint' : 'fuel');
+}
+
+// ── Fuel ──
+function addFuel() {
+  if (!currentCarId) return alert('先に車両を選択してください');
+  const date = document.getElementById('fDate').value;
+  const odo  = parseFloat(document.getElementById('fOdo').value);
+  const amt  = parseFloat(document.getElementById('fAmt').value);
+  const price = parseFloat(document.getElementById('fPrice').value) || null;
+  const station = document.getElementById('fStation').value.trim();
+  const note = document.getElementById('fNote').value.trim();
+  if (!date) return alert('日付を入力してください');
+  if (isNaN(odo)) return alert('走行距離を入力してください');
+  if (isNaN(amt)) return alert('給油量を入力してください');
+  pushItem('fuel', { id: newId(), date, odo, amt, price, station, note });
+  rememberStation(station);
+  ['fOdo','fAmt','fPrice','fStation','fNote'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('fStationSelect').value = '';
+  renderFuel();
+}
+function renderFuel() {
+  const arr = [...getList('fuel')].sort((a,b) => b.date.localeCompare(a.date));
+  const tbody = document.getElementById('fuelBody');
+  const cards = document.getElementById('fuelCards');
+  if (!arr.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">給油記録がありません</div></td></tr>';
+    cards.innerHTML = '<div class="empty-state">給油記録がありません</div>';
+    return;
+  }
+  const sorted = [...arr].sort((a,b) => a.odo - b.odo);
+  const feMap = {};
+  for (let i = 1; i < sorted.length; i++) {
+    const km = sorted[i].odo - sorted[i-1].odo;
+    if (km > 0 && sorted[i].amt > 0) feMap[sorted[i].id] = (km / sorted[i].amt).toFixed(1);
+  }
+  // テーブル（PC）
+  tbody.innerHTML = arr.map(r => `<tr>
+    <td>${r.date}</td><td>${r.odo.toLocaleString()} km</td><td>${r.amt} L</td>
+    <td>${r.price != null ? r.price + ' 円' : '—'}</td>
+    <td>${r.price != null ? Math.round(r.price * r.amt).toLocaleString() + ' 円' : '—'}</td>
+    <td>${feMap[r.id] != null ? feMap[r.id] + ' km/L' : '—'}</td>
+    <td>${r.station || '—'}</td>
+    <td><button class="btn-edit" onclick="openEditModal('fuel',${r.id})">✏️</button></td>
+    <td><button class="btn-del" onclick="delFuel(${r.id})">✕</button></td>
+  </tr>`).join('');
+  // カード（モバイル）
+  cards.innerHTML = arr.map(r => `
+    <div class="record-card">
+      <div class="record-card-top">
+        <span class="record-card-date">${r.date}</span>
+        <div class="record-card-actions">
+          <button class="btn-edit" onclick="openEditModal('fuel',${r.id})">✏️</button>
+          <button class="btn-del" onclick="delFuel(${r.id})">✕</button>
+        </div>
+      </div>
+      <div class="record-card-main">${r.amt} L給油　${r.station || ''}</div>
+      <div class="record-card-sub">
+        <span>📍 ${r.odo.toLocaleString()} km</span>
+        ${r.price != null ? `<span>💴 ${r.price}円/L（計${Math.round(r.price*r.amt).toLocaleString()}円）</span>` : ''}
+        ${feMap[r.id] != null ? `<span>⛽ ${feMap[r.id]} km/L</span>` : ''}
+        ${r.note ? `<span>📝 ${r.note}</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+function delFuel(id) { if (!confirm('削除しますか？')) return; removeItem('fuel', id); renderFuel(); }
+
+// ── Maint ──
+function addMaint() {
+  if (!currentCarId) return alert('先に車両を選択してください');
+  const date = document.getElementById('mDate').value;
+  const odo  = parseFloat(document.getElementById('mOdo').value) || null;
+  const type = document.getElementById('mType').value;
+  const cost = parseFloat(document.getElementById('mCost').value) || null;
+  const nextDate = document.getElementById('mNextDate').value;
+  const nextOdo  = document.getElementById('mNextOdo').value;
+  const note = document.getElementById('mNote').value.trim();
+  if (!date) return alert('日付を入力してください');
+  pushItem('maint', { id: newId(), date, odo, type, cost, nextDate, nextOdo, note });
+  ['mOdo','mCost','mNextDate','mNextOdo','mNote'].forEach(x => document.getElementById(x).value = '');
+  renderMaint();
+}
+function renderMaint() {
+  const arr = getList('maint');
+  const tbody = document.getElementById('maintBody');
+  const cards = document.getElementById('maintCards');
+  if (!arr.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">メンテナンス記録がありません</div></td></tr>';
+    cards.innerHTML = '<div class="empty-state">メンテナンス記録がありません</div>';
+    return;
+  }
+  // テーブル（PC）
+  tbody.innerHTML = arr.map(r => `<tr>
+    <td>${r.date}</td><td>${r.type}</td>
+    <td>${r.odo != null ? r.odo.toLocaleString() + ' km' : '—'}</td>
+    <td>${r.cost != null ? r.cost.toLocaleString() + ' 円' : '—'}</td>
+    <td>${[r.nextDate, r.nextOdo ? r.nextOdo + 'km' : ''].filter(Boolean).join(' / ') || '—'}</td>
+    <td>${r.note || '—'}</td>
+    <td><button class="btn-edit" onclick="openEditModal('maint',${r.id})">✏️</button></td>
+    <td><button class="btn-del" onclick="delMaint(${r.id})">✕</button></td>
+  </tr>`).join('');
+  // カード（モバイル）
+  cards.innerHTML = arr.map(r => `
+    <div class="record-card">
+      <div class="record-card-top">
+        <span class="record-card-date">${r.date}</span>
+        <div class="record-card-actions">
+          <button class="btn-edit" onclick="openEditModal('maint',${r.id})">✏️</button>
+          <button class="btn-del" onclick="delMaint(${r.id})">✕</button>
+        </div>
+      </div>
+      <div class="record-card-main">🔧 ${r.type}</div>
+      <div class="record-card-sub">
+        ${r.odo != null ? `<span>📍 ${r.odo.toLocaleString()} km</span>` : ''}
+        ${r.cost != null ? `<span>💴 ${r.cost.toLocaleString()}円</span>` : ''}
+        ${r.nextDate || r.nextOdo ? `<span>🔜 ${[r.nextDate, r.nextOdo ? r.nextOdo+'km':''].filter(Boolean).join(' / ')}</span>` : ''}
+        ${r.note ? `<span>📝 ${r.note}</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+function delMaint(id) { if (!confirm('削除しますか？')) return; removeItem('maint', id); renderMaint(); }
+
+// ── Inspect ──
+function saveInspect() {
+  if (!currentCarId) return alert('先に車両を選択してください');
+  const info = getInfo();
+  info.iLast = document.getElementById('iLast').value;
+  info.iNext = document.getElementById('iNext').value;
+  info.iCost = document.getElementById('iCost').value;
+  info.iShop = document.getElementById('iShop').value;
+  setInfo(info); renderInspect(); alert('車検情報を保存しました');
+}
+function saveInsurance() {
+  if (!currentCarId) return alert('先に車両を選択してください');
+  const info = getInfo();
+  info.insComp = document.getElementById('insComp').value;
+  info.insPol  = document.getElementById('insPol').value;
+  info.insStart = document.getElementById('insStart').value;
+  info.insEnd  = document.getElementById('insEnd').value;
+  info.insPrem = document.getElementById('insPrem').value;
+  info.insGrade = document.getElementById('insGrade').value;
+  setInfo(info); renderInspect(); alert('保険情報を保存しました');
+}
+function renderInspect() {
+  if (!currentCarId) { document.getElementById('inspectStatus').innerHTML = ''; return; }
+  const info = getInfo();
+  const fields = { iLast:'iLast', iNext:'iNext', iCost:'iCost', iShop:'iShop', insComp:'insComp', insPol:'insPol', insStart:'insStart', insEnd:'insEnd', insPrem:'insPrem', insGrade:'insGrade' };
+  Object.entries(fields).forEach(([k,id]) => { if (info[k]) document.getElementById(id).value = info[k]; });
+  let html = '';
+  if (info.iNext) {
+    const d = Math.round((new Date(info.iNext) - new Date()) / 86400000);
+    const cls = d < 30 ? 'danger' : d < 90 ? 'warn' : 'ok';
+    const pct = Math.max(0, Math.min(100, (730 - d) / 730 * 100));
+    html += `<div class="card"><div class="card-header">📅 車検ステータス</div><div style="padding:16px;">
+      <span class="badge badge-${cls}">${d < 0 ? '期限切れ' : `あと ${d}日`}</span>
+      <div style="margin-top:8px;color:var(--muted);font-size:12px;">次回車検: ${info.iNext}${info.iShop ? '　' + info.iShop : ''}</div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%;background:var(--${d<30?'danger':'accent'});"></div></div>
+    </div></div>`;
+  }
+  if (info.insEnd) {
+    const d = Math.round((new Date(info.insEnd) - new Date()) / 86400000);
+    const cls = d < 30 ? 'danger' : d < 90 ? 'warn' : 'ok';
+    html += `<div class="card"><div class="card-header">🛡️ 保険ステータス</div><div style="padding:16px;">
+      <span class="badge badge-${cls}">${d < 0 ? '期限切れ' : `あと ${d}日`}</span>
+      <div style="margin-top:8px;color:var(--muted);font-size:12px;">${info.insComp || ''}${info.insGrade ? `　${info.insGrade}等級` : ''}　満期: ${info.insEnd}</div>
+    </div></div>`;
+  }
+  document.getElementById('inspectStatus').innerHTML = html;
+}
+
+// ── Mileage ──
+function addMileage() {
+  if (!currentCarId) return alert('先に車両を選択してください');
+  const date = document.getElementById('dDate').value;
+  const km   = parseFloat(document.getElementById('dKm').value);
+  const purpose = document.getElementById('dPurpose').value;
+  const note = document.getElementById('dNote').value.trim();
+  if (!date) return alert('日付を入力してください');
+  if (isNaN(km)) return alert('走行距離を入力してください');
+  pushItem('mileage', { id: newId(), date, km, purpose, note });
+  document.getElementById('dKm').value = '';
+  document.getElementById('dNote').value = '';
+  renderMileage();
+}
+function renderMileage() {
+  const arr = getList('mileage');
+  const tbody = document.getElementById('mileageBody');
+  const cards = document.getElementById('mileageCards');
+  if (!arr.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">走行記録がありません</div></td></tr>';
+    if (cards) cards.innerHTML = '<div class="empty-state">走行記録がありません</div>';
+    document.getElementById('mileageStats').innerHTML = '';
+    return;
+  }
+  const totalKm = arr.reduce((s,r) => s + r.km, 0);
+  const m = new Date().toISOString().slice(0,7);
+  const monthKm = arr.filter(r => r.date.startsWith(m)).reduce((s,r) => s + r.km, 0);
+  document.getElementById('mileageStats').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">累計走行距離</div><div class="stat-value">${totalKm.toFixed(0)}</div><div class="stat-unit">km</div></div>
+      <div class="stat-card"><div class="stat-label">今月の走行距離</div><div class="stat-value">${monthKm.toFixed(0)}</div><div class="stat-unit">km</div></div>
+      <div class="stat-card"><div class="stat-label">1記録あたり平均</div><div class="stat-value">${(totalKm/arr.length).toFixed(1)}</div><div class="stat-unit">km</div></div>
+    </div>`;
+  // テーブル（PC）
+  tbody.innerHTML = arr.map(r => `<tr>
+    <td>${r.date}</td><td>${r.km.toFixed(1)} km</td><td>${r.purpose}</td><td>${r.note || '—'}</td>
+    <td><button class="btn-edit" onclick="openEditModal('mileage',${r.id})">✏️</button></td>
+    <td><button class="btn-del" onclick="delMileage(${r.id})">✕</button></td>
+  </tr>`).join('');
+  // カード（モバイル）
+  if (cards) cards.innerHTML = arr.map(r => `
+    <div class="record-card">
+      <div class="record-card-top">
+        <span class="record-card-date">${r.date}</span>
+        <div class="record-card-actions">
+          <button class="btn-edit" onclick="openEditModal('mileage',${r.id})">✏️</button>
+          <button class="btn-del" onclick="delMileage(${r.id})">✕</button>
+        </div>
+      </div>
+      <div class="record-card-main">🛣️ ${r.km.toFixed(1)} km　${r.purpose}</div>
+      <div class="record-card-sub">
+        ${r.note ? `<span>📝 ${r.note}</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+function delMileage(id) { if (!confirm('削除しますか？')) return; removeItem('mileage', id); renderMileage(); }
+
+// ── Init ──
+(function() {
+  buildMakerSelect();
+
+  // 既存の給油記録からスタンド名を収集
+  Object.values(db.fuel || {}).forEach(records => {
+    (records || []).forEach(r => {
+      if (r.station && !stationMemory.includes(r.station)) {
+        stationMemory.push(r.station);
+      }
+    });
+  });
+  buildStationSelects();
+  ['fDate','mDate','dDate'].forEach(id => { document.getElementById(id).value = today(); });
+
+  // 保存済み車両をセレクトに復元
+  if (db.cars && db.cars.length) {
+    db.cars.forEach(c => {
+      const label = `${c.nick}（${c.make} ${c.model}${c.year ? ' ' + c.year : ''}）`;
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = label;
+      document.getElementById('carSelect').appendChild(opt.cloneNode(true));
+      document.getElementById('carSelectMobile').appendChild(opt);
+    });
+    // 前回選択していた車両を復元
+    if (currentCarId && db.cars.find(c => c.id === currentCarId)) {
+      document.getElementById('carSelect').value = currentCarId;
+      document.getElementById('carSelectMobile').value = currentCarId;
+      const car = db.cars.find(c => c.id === currentCarId);
+      document.getElementById('headerCarName').textContent =
+        `${car.nick} — ${car.make} ${car.model}${car.plate ? '　' + car.plate : ''}`;
+    } else {
+      currentCarId = null;
+    }
+  }
+
+  renderDashboard();
+})();
+</script>
+
+<script>
+// Service Worker 登録（PWA オフライン対応）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
